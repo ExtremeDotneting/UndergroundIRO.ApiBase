@@ -1,10 +1,6 @@
-﻿using ApiBase.Services;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Debug;
-using System;
-using System.Collections.Generic;
+﻿using Microsoft.Extensions.Logging;
 
-namespace ApiBase
+namespace UndergroundIRO.ApiBase
 {
     public class WebsocketConfiguration
     {

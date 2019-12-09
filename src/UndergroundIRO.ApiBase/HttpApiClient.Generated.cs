@@ -1,15 +1,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
+using System.Text.RegularExpressions;
 
-
-namespace ApiBase
+namespace UndergroundIRO.ApiBase
 {
     //!STANDARD SWAGGER GENERATED CODE.
     /// <summary>
@@ -36,7 +35,8 @@ namespace ApiBase
         protected HttpRequestMessage PrepareRequest(
             string url,
             HttpMethod method,
-            string contentType,
+            MediaTypeHeaderValue contentType,
+            Encoding textContentEncoding,
             IDictionary<string, string> queryParams,
             string postBody,
             IDictionary<string, string> headerParams,
@@ -78,9 +78,19 @@ namespace ApiBase
             {
                 request.Content = new FormUrlEncodedContent(formParams);
             }
-            else if (postBody != null) 
+            else if (postBody != null)
             {
-                request.Content = new StringContent(postBody, Encoding.UTF8, contentType);
+                var stringContent = new StringContent(
+                    postBody, 
+                    textContentEncoding,
+                    contentType?.MediaType ?? "text/plain"
+                    );
+                request.Content = stringContent;
+            }
+
+            if (contentType != null)
+            {
+                request.Content.Headers.ContentType = contentType;
             }
             return request;
         }

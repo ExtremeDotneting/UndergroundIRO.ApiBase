@@ -1,17 +1,15 @@
-﻿using ApiBase.Services;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Debug;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using UndergroundIRO.ApiBase.Services;
 
-namespace ApiBase
+namespace UndergroundIRO.ApiBase
 {
     public class Configuration
     {
         public virtual string BasePath { get; set; }
 
-        public virtual bool UseTimeoutQueue { get; set; } = true;
+        public virtual bool UseTimeoutQueue { get; set; } = false;
 
         public virtual ITimeoutQueue TimeoutQueue { get; set; } = new TimeoutQueue();
 
@@ -25,7 +23,7 @@ namespace ApiBase
         /// <summary>
         /// Gets or sets the HTTP timeout (milliseconds) of ApiClient. Default to 100000 milliseconds.
         /// </summary>
-        public virtual TimeSpan ResponseTimeout { get; set; } = TimeSpan.FromSeconds(100000);
+        public virtual TimeSpan ResponseTimeout { get; set; } = TimeSpan.FromSeconds(1);
 
         /// <summary>
         /// Gets or sets the HTTP user agent.

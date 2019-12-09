@@ -1,17 +1,18 @@
-﻿using ApiBase.Models;
-using ApiBase.Services;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
+using UndergroundIRO.ApiBase.Models;
+using UndergroundIRO.ApiBase.Services;
 
-namespace ApiBase
+namespace UndergroundIRO.ApiBase
 {
     public partial class HttpApiClient
     {
@@ -40,9 +41,10 @@ namespace ApiBase
         }
 
         protected async Task<HttpResponseMessage> CallApiAsync(
-            string relativeUrl,
+            string absoluteUrl,
             HttpMethod method,
-            string contentType = null,
+            MediaTypeHeaderValue contentType = null,
+            Encoding textContentEncoding = null,
             IDictionary<string, string> queryParams = null,
             string postBody = null,
             IDictionary<string, string> headerParams = null,
@@ -50,11 +52,11 @@ namespace ApiBase
             IDictionary<string, string> pathParams = null
             )
         {
-            var absoluteUrl = RelativeUrlToAbsolute(relativeUrl);
             var request = PrepareRequest(
                 absoluteUrl,
                 method,
                 contentType,
+                textContentEncoding,
                 queryParams,
                 postBody,
                 headerParams,
@@ -71,6 +73,7 @@ namespace ApiBase
                     absoluteUrl,
                     method,
                     contentType,
+                    textContentEncoding,
                     queryParams,
                     postBody,
                     headerParams,

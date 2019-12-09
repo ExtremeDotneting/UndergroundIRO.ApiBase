@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 
 // ReSharper disable once CheckNamespace
-namespace ApiBase.Extensions
+namespace UndergroundIRO.ApiBase.Extensions
 {
     public static class CommonExtensions
     {

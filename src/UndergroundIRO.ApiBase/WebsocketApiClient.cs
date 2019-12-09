@@ -1,16 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net.Http;
 using System.Net.WebSockets;
-using System.Text;
 using System.Threading.Tasks;
-using ApiBase.Services;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Websocket.Client;
 
-namespace ApiBase
+namespace UndergroundIRO.ApiBase
 {
     public class WebsocketApiClient : IDisposable
     {

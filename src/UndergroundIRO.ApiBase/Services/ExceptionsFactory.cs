@@ -1,9 +1,9 @@
-﻿using ApiBase.Exceptions;
-using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Net.Http;
+using Newtonsoft.Json.Linq;
+using UndergroundIRO.ApiBase.Exceptions;
 
-namespace ApiBase.Services
+namespace UndergroundIRO.ApiBase.Services
 {
     public class ExceptionsFactory : IExceptionsFactory
     {

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace ApiBase.Services
+namespace UndergroundIRO.ApiBase.Services
 {
     public interface ITimeoutQueue
     {

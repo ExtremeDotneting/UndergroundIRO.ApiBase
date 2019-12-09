@@ -1,9 +1,11 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
-namespace ApiBase.Models
+namespace UndergroundIRO.ApiBase.Models
 {
     class RequestLogSerializeDto
     {
@@ -12,7 +14,8 @@ namespace ApiBase.Models
         public RequestLogSerializeDto(
             string relativePath,
             HttpMethod method,
-            string contentType,
+            MediaTypeHeaderValue contentType,
+            Encoding textContentEncoding,
             IDictionary<string, string> queryParams,
             string postBody,
             IDictionary<string, string> headerParams,
@@ -23,6 +26,7 @@ namespace ApiBase.Models
             RelativePath = relativePath;
             Method = method;
             ContentType = contentType;
+            TextContentEncoding = textContentEncoding;
             QueryParams = queryParams;
             PostBody = postBody;
             HeaderParams = headerParams;
@@ -32,7 +36,8 @@ namespace ApiBase.Models
 
         public string RelativePath { get; set; }
         public HttpMethod Method { get; set; }
-        public string ContentType { get; set; }
+        public MediaTypeHeaderValue ContentType { get; set; }
+        public Encoding TextContentEncoding { get; set; }
         public IDictionary<string, string> QueryParams { get; set; }
         public string PostBody { get; set; }
         public IDictionary<string, string> HeaderParams { get; set; }

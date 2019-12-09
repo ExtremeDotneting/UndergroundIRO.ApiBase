@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ApiBase.Exceptions
+namespace UndergroundIRO.ApiBase.Exceptions
 {
     public class ApiException : Exception
     {
@@ -16,25 +16,22 @@ namespace ApiBase.Exceptions
 
         public ApiException(string message) : base(message) { }
 
-        public ApiException(int httpCode, string message, string responseContent = null) : base(message)
+        public ApiException(int httpCode, string message, string responseContent = null) 
+            : base(CreateMessage(httpCode, message, responseContent))
         {
             this.HttpCode = httpCode;
             this.ResponseContent = responseContent;
         }
 
-        public override string ToString()
+        static string CreateMessage(int httpCode, string message, string responseContent = null)
         {
-            var res = base.ToString();
-            if (HttpCode != null)
+            message += $"\n------------\nWith http code: {httpCode}.";
+            if (responseContent != null)
             {
-                res += $"\n------------\nWith http code: {HttpCode}.";
+                message += "\n------------\nWith response content:\n";
+                message += responseContent;
             }
-            if (ResponseContent != null)
-            {
-                res += "\n------------\nWith responseContent content:\n";
-                res += ResponseContent;
-            }
-            return res;
+            return message;
         }
     }
 
