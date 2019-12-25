@@ -86,7 +86,7 @@ namespace UndergroundIRO.ApiBase
             if (CurrentLogLevel <= LogLevel.Information)
             {
 
-                var logStr = $"Request number '{TotalRequestsCount}' parameters is :\n";
+                var logStr = $"Request number '{TotalRequestsCount}' parameters is:\n";
                 logStr += JsonConvert.SerializeObject(
                     request,
                     Formatting.Indented,
@@ -98,6 +98,16 @@ namespace UndergroundIRO.ApiBase
             var response = await InQueueIfNeed(async () =>
                 await HttpClient.SendAsync(request)
                 );
+            if (CurrentLogLevel <= LogLevel.Information)
+            {
+                try
+                {
+                    var respText = await response.Content.ReadAsStringAsync();
+                    var logStr = $"Response number '{TotalRequestsCount}' body:\n{respText}";
+                    Log.LogInformation(logStr);
+                }
+                catch { }
+            }
             ThrowIfResponseError(request, response);
             InterceptResponse(request, response);
             return response;
