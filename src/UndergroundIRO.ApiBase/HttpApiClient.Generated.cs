@@ -100,7 +100,7 @@ namespace UndergroundIRO.ApiBase
         /// </summary>
         /// <param name="str">string to be escaped.</param>
         /// <returns>Escaped string.</returns>
-        protected string EscapeString(string str)
+        public static string EscapeString(string str)
         {
             return UrlEncode(str);
         }
@@ -165,7 +165,7 @@ namespace UndergroundIRO.ApiBase
         /// </summary>
         /// <param name="text">string to be encoded.</param>
         /// <returns>Encoded string.</returns>
-        protected string Base64Encode(string text)
+        public static string Base64Encode(string text)
         {
             return System.Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(text));
         }
@@ -175,7 +175,7 @@ namespace UndergroundIRO.ApiBase
         /// </summary>
         /// <param name="inputStream">Input stream to be converted</param>
         /// <returns>Byte array</returns>
-        protected byte[] ReadAsBytes(Stream inputStream)
+        public static byte[] ReadAsBytes(Stream inputStream)
         {
             byte[] buf = new byte[16 * 1024];
             using (MemoryStream ms = new MemoryStream())
@@ -195,7 +195,7 @@ namespace UndergroundIRO.ApiBase
         /// </summary>
         /// <param name="input">string to be URL encoded</param>
         /// <returns>Byte array</returns>
-        protected string UrlEncode(string input)
+        public static string UrlEncode(string input)
         {
             const int maxLength = 32766;
 

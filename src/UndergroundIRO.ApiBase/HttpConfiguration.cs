@@ -5,10 +5,8 @@ using UndergroundIRO.ApiBase.Services;
 
 namespace UndergroundIRO.ApiBase
 {
-    public class Configuration
+    public class HttpConfiguration
     {
-        public virtual string BasePath { get; set; }
-
         public virtual bool UseTimeoutQueue { get; set; } = false;
 
         public virtual ITimeoutQueue TimeoutQueue { get; set; } = new TimeoutQueue();

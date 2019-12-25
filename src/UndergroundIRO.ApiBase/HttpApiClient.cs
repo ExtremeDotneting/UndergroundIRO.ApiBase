@@ -18,15 +18,14 @@ namespace UndergroundIRO.ApiBase
     {
         public string Id { get; }
         public int TotalRequestsCount { get; private set; }
-        public string BasePath => Configuration.BasePath;
-        protected Configuration Configuration { get; }
+        protected HttpConfiguration Configuration { get; }
         protected JsonSerializerSettings JsonSettings { get; set; } = new JsonSerializerSettings();
         protected ILogger Log { get; }
         protected LogLevel CurrentLogLevel => Configuration.LogLevel;
         protected HttpClient HttpClient { get; } = new HttpClient();
         readonly IExceptionsFactory _exceptionsFactory;
 
-        public HttpApiClient(Configuration conf)
+        public HttpApiClient(HttpConfiguration conf)
         {
             Id = Guid.NewGuid().ToString().Remove(6);
             Configuration = conf ?? throw new ArgumentNullException(nameof(conf));
@@ -40,7 +39,7 @@ namespace UndergroundIRO.ApiBase
             UseTimeoutQueue = conf.UseTimeoutQueue;
         }
 
-        protected async Task<HttpResponseMessage> CallApiAsync(
+        public async Task<HttpResponseMessage> CallApiAsync(
             string absoluteUrl,
             HttpMethod method,
             MediaTypeHeaderValue contentType = null,
@@ -116,7 +115,7 @@ namespace UndergroundIRO.ApiBase
         /// <summary>
         /// Will throw exception if can't.
         /// </summary>
-        protected virtual async Task<ApiResponse<T>> ResolveApiResponse<T>(HttpResponseMessage httpResponse, JsonSerializerSettings settings = null)
+        public virtual async Task<ApiResponse<T>> ResolveApiResponse<T>(HttpResponseMessage httpResponse, JsonSerializerSettings settings = null)
         {
             settings = settings ?? JsonSettings;
             try
@@ -127,9 +126,9 @@ namespace UndergroundIRO.ApiBase
                     headers[item.Key] = item.Value;
                 }
                 var content = await httpResponse.Content.ReadAsStringAsync();
-                var jToken = Deserialize(content, settings);
+                var jToken = Deserialize<JToken>(content, settings);
                 ThrowIfResponseError(jToken);
-                var data = jToken.ToObject<T>();
+                var data = Deserialize<T>(content, settings);
                 var apiResponse = new ApiResponse<T>(
                     (int)httpResponse.StatusCode,
                     headers,
@@ -150,32 +149,38 @@ namespace UndergroundIRO.ApiBase
             }
         }
 
-        protected string RelativeUrlToAbsolute(string relativeUrl)
+        public string RelativeUrlToAbsolute(string basePath, string relativeUrl)
         {
             if (relativeUrl.StartsWith("https://") || relativeUrl.StartsWith("http://"))
             {
                 return relativeUrl;
             }
-            if (BasePath.EndsWith("/") && relativeUrl.StartsWith("/"))
+            if (basePath.EndsWith("/") && relativeUrl.StartsWith("/"))
             {
                 relativeUrl = relativeUrl.Substring(1);
             }
-            return BasePath + relativeUrl;
+            return basePath + relativeUrl;
         }
 
-        protected virtual JToken Deserialize(string str, JsonSerializerSettings settings = null)
+        public virtual T Deserialize<T>(string str, JsonSerializerSettings settings = null)
         {
             settings = settings ?? JsonSettings;
-            return JsonConvert.DeserializeObject<JToken>(str, settings);
+            return JsonConvert.DeserializeObject<T>(str, settings);
         }
 
-        protected virtual string Serialize(object obj, JsonSerializerSettings settings = null)
+        public virtual string SerializeAsType<T>(T obj, JsonSerializerSettings settings = null)
+        {
+            settings = settings ?? JsonSettings;
+            return JsonConvert.SerializeObject(obj, typeof(T), settings);
+        }
+
+        public virtual string Serialize(object obj, JsonSerializerSettings settings = null)
         {
             settings = settings ?? JsonSettings;
             return JsonConvert.SerializeObject(obj, settings);
         }
 
-        protected IDictionary<string, string> ParametersToDict(object obj, JsonSerializerSettings settings = null)
+        public IDictionary<string, string> ParametersToDict(object obj, JsonSerializerSettings settings = null)
         {
             var dict = new Dictionary<string, string>();
             var jObject = (obj as JObject) ?? JObject.FromObject(obj);
@@ -186,7 +191,7 @@ namespace UndergroundIRO.ApiBase
             return dict;
         }
 
-        protected string ParameterToString(object obj, JsonSerializerSettings settings = null)
+        public string ParameterToString(object obj, JsonSerializerSettings settings = null)
         {
             settings = settings ?? this.JsonSettings;
             if (obj == null)
@@ -220,7 +225,17 @@ namespace UndergroundIRO.ApiBase
             }
         }
 
-        protected void ThrowIfResponseError(HttpRequestMessage request, HttpResponseMessage response)
+        public string RemoveJsonStringBrackets(string json)
+        {
+            if (json.StartsWith("\"") && json.EndsWith("\""))
+            {
+                json = json.Substring(1);
+                json = json.Remove(json.Length - 1);
+            }
+            return json;
+        }
+
+        void ThrowIfResponseError(HttpRequestMessage request, HttpResponseMessage response)
         {
             var ex = _exceptionsFactory.CheckHttpResponse(request, response);
             if (ex != null)
@@ -234,7 +249,7 @@ namespace UndergroundIRO.ApiBase
             }
         }
 
-        protected void ThrowIfResponseError(JToken responseJToken)
+        void ThrowIfResponseError(JToken responseJToken)
         {
             var ex = _exceptionsFactory.CheckJTokenResponse(responseJToken);
             if (ex != null)
@@ -246,16 +261,6 @@ namespace UndergroundIRO.ApiBase
                 }
                 throw ex;
             }
-        }
-
-        protected string RemoveJsonStringBrackets(string json)
-        {
-            if (json.StartsWith("\"") && json.EndsWith("\""))
-            {
-                json = json.Substring(1);
-                json = json.Remove(json.Length - 1);
-            }
-            return json;
         }
 
         #region Timeout queue.
@@ -273,12 +278,12 @@ namespace UndergroundIRO.ApiBase
         /// </summary>
         public int QueuePendingRequestLimit => _timeoutQueue.QueuePendingItemLimit;
 
-        protected virtual async Task InQueue(Func<Task> func)
+        public virtual async Task InQueue(Func<Task> func)
         {
             await _timeoutQueue.Execute(func);
         }
 
-        protected virtual async Task<TResult> InQueue<TResult>(Func<Task<TResult>> func)
+        public virtual async Task<TResult> InQueue<TResult>(Func<Task<TResult>> func)
         {
             return await _timeoutQueue.Execute<TResult>(func);
         }
@@ -286,7 +291,7 @@ namespace UndergroundIRO.ApiBase
         /// <summary>
         /// If <see cref="UseTimeoutQueue"/> is false - execute without queue.
         /// </summary>
-        protected virtual async Task InQueueIfNeed(Func<Task> func)
+        public virtual async Task InQueueIfNeed(Func<Task> func)
         {
             if (UseTimeoutQueue)
             {
@@ -301,7 +306,7 @@ namespace UndergroundIRO.ApiBase
         /// <summary>
         /// If <see cref="UseTimeoutQueue"/> is false - execute without queue.
         /// </summary>
-        protected virtual async Task<TResult> InQueueIfNeed<TResult>(Func<Task<TResult>> func)
+        public virtual async Task<TResult> InQueueIfNeed<TResult>(Func<Task<TResult>> func)
         {
             if (UseTimeoutQueue)
             {
@@ -311,6 +316,98 @@ namespace UndergroundIRO.ApiBase
             {
                 return await func();
             }
+        }
+        #endregion
+
+        #region Standart.
+        public virtual async Task<TResult> GetRequest<TResult>(string absoluteUrl)
+        {
+            var restResponse = await CallApiAsync(
+                absoluteUrl,
+                HttpMethod.Get
+            );
+            var apiResponse = await ResolveApiResponse<TResult>(restResponse);
+            return apiResponse.Data;
+        }
+
+        /// <summary>
+        /// </summary>
+        /// <param name="requestData">Serialized as json.</param>
+        public virtual async Task<TResult> PostRequest<TRequest, TResult>(string absoluteUrl, TRequest requestData)
+        {
+            var body = Serialize(requestData);
+            var restResponse = await CallApiAsync(
+                absoluteUrl,
+                HttpMethod.Post,
+                contentType: new MediaTypeHeaderValue("application/json"),
+                postBody: body
+            );
+            var apiResponse = await ResolveApiResponse<TResult>(restResponse);
+            return apiResponse.Data;
+        }
+
+        /// <summary>
+        /// </summary>
+        /// <param name="requestData">Serialized as json.</param>
+        public virtual async Task<TResult> PutRequest<TRequest, TResult>(string absoluteUrl, TRequest requestData)
+        {
+            var body = Serialize(requestData);
+            var restResponse = await CallApiAsync(
+                absoluteUrl,
+                HttpMethod.Put,
+                contentType: new MediaTypeHeaderValue("application/json"),
+                postBody: body
+            );
+            var apiResponse = await ResolveApiResponse<TResult>(restResponse);
+            return apiResponse.Data;
+        }
+
+        /// <summary>
+        /// </summary>
+        /// <param name="requestData">Serialized as json.</param>
+        public virtual async Task<TResult> HeadRequest<TRequest, TResult>(string absoluteUrl, TRequest requestData)
+        {
+            var body = Serialize(requestData);
+            var restResponse = await CallApiAsync(
+                absoluteUrl,
+                HttpMethod.Head,
+                contentType: new MediaTypeHeaderValue("application/json"),
+                postBody: body
+            );
+            var apiResponse = await ResolveApiResponse<TResult>(restResponse);
+            return apiResponse.Data;
+        }
+
+        /// <summary>
+        /// </summary>
+        /// <param name="requestData">Serialized as json.</param>
+        public virtual async Task<TResult> DeleteRequest<TRequest, TResult>(string absoluteUrl, TRequest requestData)
+        {
+            var body = Serialize(requestData);
+            var restResponse = await CallApiAsync(
+                absoluteUrl,
+                HttpMethod.Delete,
+                contentType: new MediaTypeHeaderValue("application/json"),
+                postBody: body
+            );
+            var apiResponse = await ResolveApiResponse<TResult>(restResponse);
+            return apiResponse.Data;
+        }
+
+        /// <summary>
+        /// </summary>
+        /// <param name="requestData">Serialized as json.</param>
+        public virtual async Task<TResult> OptionsRequest<TRequest, TResult>(string absoluteUrl, TRequest requestData)
+        {
+            var body = Serialize(requestData);
+            var restResponse = await CallApiAsync(
+                absoluteUrl,
+                HttpMethod.Options,
+                contentType: new MediaTypeHeaderValue("application/json"),
+                postBody: body
+            );
+            var apiResponse = await ResolveApiResponse<TResult>(restResponse);
+            return apiResponse.Data;
         }
         #endregion
     }
