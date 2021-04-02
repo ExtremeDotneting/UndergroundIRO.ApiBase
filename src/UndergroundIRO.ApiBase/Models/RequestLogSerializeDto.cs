@@ -12,37 +12,49 @@ namespace UndergroundIRO.ApiBase.Models
         public RequestLogSerializeDto() { }
 
         public RequestLogSerializeDto(
-            string relativePath,
+            string url,
             HttpMethod method,
-            MediaTypeHeaderValue contentType,
-            Encoding textContentEncoding,
-            IDictionary<string, string> queryParams,
-            string postBody,
             IDictionary<string, string> headerParams,
             IDictionary<string, string> formParams,
-            IDictionary<string, string> pathParams
+            Encoding textContentEncoding,
+            string mediaType,
+            string stringsBody,
+            HttpContent httpContent
             )
         {
-            RelativePath = relativePath;
+            Url = url;
             Method = method;
-            ContentType = contentType;
-            TextContentEncoding = textContentEncoding;
-            QueryParams = queryParams;
-            PostBody = postBody;
             HeaderParams = headerParams;
-            FormParams = formParams;
-            PathParams = pathParams;
+            if (stringsBody != null)
+            {
+                TextContentEncoding = textContentEncoding;
+                StringsBody = stringsBody;
+                MediaType = mediaType;
+            }
+            else if (formParams != null)
+            {
+                FormParams = formParams;
+            }
+            else if (httpContent != null)
+            {
+                UsedCustomHttpContent = true;
+            }
         }
 
-        public string RelativePath { get; set; }
+        public string Url { get; set; }
         public HttpMethod Method { get; set; }
-        public MediaTypeHeaderValue ContentType { get; set; }
-        public Encoding TextContentEncoding { get; set; }
-        public IDictionary<string, string> QueryParams { get; set; }
-        public string PostBody { get; set; }
+
         public IDictionary<string, string> HeaderParams { get; set; }
+
+        public Encoding TextContentEncoding { get; set; }
+
+        public string StringsBody { get; set; }
+
+        public string MediaType { get; set; }
+
         public IDictionary<string, string> FormParams { get; set; }
-        public IDictionary<string, string> PathParams { get; set; }
+        
+        public bool UsedCustomHttpContent { get; set; }
 
         public override string ToString()
         {

@@ -31,39 +31,32 @@ namespace UndergroundIRO.ApiBase
 
         /// <summary>
         /// Creates and sets up a RestRequest prior to a call.
+        /// <para></para>
+        /// You must use only one of content parameters:<paramref name="formParams"/>
+        /// or <paramref name="httpContent"/> or <paramref name="jsonBody"/>.
         /// </summary>
         protected HttpRequestMessage PrepareRequest(
             string url,
             HttpMethod method,
-            MediaTypeHeaderValue contentType,
-            Encoding textContentEncoding,
-            IDictionary<string, string> queryParams,
-            string postBody,
             IDictionary<string, string> headerParams,
             IDictionary<string, string> formParams,
-            IDictionary<string, string> pathParams
+            Encoding textContentEncoding,
+            string mediaType,
+            string stringsBody,
+            HttpContent httpContent
             )
         {
-            if (pathParams != null)
-            {
-                foreach (var pathParam in pathParams)
-                {
-                    url = url.Replace("{" + pathParam.Key + "}", pathParam.Value);
-                }
-            }
-
-            if (queryParams != null)
-            {
-                url += "?";
-                // add query parameter, if any
-                foreach (var param in queryParams)
-                {
-                    url += $"{UrlEncode(param.Key)}={UrlEncode(param.Value)}&";
-                }
-                url = url.Remove(url.Length - 1);
-            }
-
             var request = new HttpRequestMessage(method, url);
+
+            var defaultHeaders = Configuration.DefaultHeaders;
+            if (defaultHeaders != null)
+            {
+                // add header parameter, if any
+                foreach (var param in defaultHeaders)
+                {
+                    request.Headers.Add(param.Key, param.Value);
+                }
+            }
 
             if (headerParams != null)
             {
@@ -78,20 +71,20 @@ namespace UndergroundIRO.ApiBase
             {
                 request.Content = new FormUrlEncodedContent(formParams);
             }
-            else if (postBody != null)
+            else if (stringsBody != null)
             {
                 var stringContent = new StringContent(
-                    postBody, 
+                    stringsBody,
                     textContentEncoding,
-                    contentType?.MediaType ?? "text/plain"
+                    mediaType ?? "application/json"
                     );
                 request.Content = stringContent;
             }
-
-            if (contentType != null)
+            else
             {
-                request.Content.Headers.ContentType = contentType;
+                request.Content = httpContent;
             }
+
             return request;
         }
 

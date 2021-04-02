@@ -7,11 +7,6 @@ namespace UndergroundIRO.ApiBase.Services
     {
         TimeSpan Timeout { get; set; }
 
-        /// <summary>
-        /// For each delegate in TimeoutQueue with position bigger than this value will be throwed exception.
-        /// </summary>
-        int QueuePendingItemLimit { get; set; }
-
         Task Execute(Func<Task> func);
     }
 }

@@ -14,54 +14,133 @@ using UndergroundIRO.ApiBase.Services;
 
 namespace UndergroundIRO.ApiBase
 {
-    public partial class HttpApiClient
+    public partial class HttpApiClient : IHttpApiClient
     {
         public string Id { get; }
         public int TotalRequestsCount { get; private set; }
-        protected HttpConfiguration Configuration { get; }
-        protected JsonSerializerSettings JsonSettings { get; set; } = new JsonSerializerSettings();
+        public HttpConfiguration Configuration { get; }
+        public JsonSerializerSettings JsonSettings { get; set; } = new JsonSerializerSettings();
+
         protected ILogger Log { get; }
         protected LogLevel CurrentLogLevel => Configuration.LogLevel;
         protected HttpClient HttpClient { get; } = new HttpClient();
-        readonly IExceptionsFactory _exceptionsFactory;
 
-        public HttpApiClient(HttpConfiguration conf)
+        protected IExceptionsFactory ExceptionsFactory;
+
+        public HttpApiClient(
+            HttpConfiguration conf = null,
+            ITimeoutQueue timeoutQueue = null,
+            IExceptionsFactory exceptionsFactory = null,
+            ILoggerFactory loggerFactory = null
+            )
         {
             Id = Guid.NewGuid().ToString().Remove(6);
-            Configuration = conf ?? throw new ArgumentNullException(nameof(conf));
-            if (conf.LoggerFactory == null)
-            {
-                throw new NullReferenceException("conf.LoggerFactory");
-            }
-            Log = conf.LoggerFactory.CreateLogger(GetType());
-            _timeoutQueue = conf.TimeoutQueue ?? throw new NullReferenceException("conf.TimeoutQueue");
-            _exceptionsFactory = conf.ExceptionsFactory ?? throw new NullReferenceException("conf.ExceptionsFactory");
-            UseTimeoutQueue = conf.UseTimeoutQueue;
+            Configuration = conf ?? new HttpConfiguration();
+            loggerFactory ??= Services.LoggerFactory.CreateDefaultLoggerFactory();
+            Log = loggerFactory.CreateLogger(GetType());
+            _timeoutQueue = timeoutQueue ?? new TimeoutQueue();
+            ExceptionsFactory = exceptionsFactory ?? new ExceptionsFactory();
+        }
+
+        #region CallApi.
+        public async Task<HttpResponseMessage> CallApiAsync(
+            string absoluteUrl,
+            HttpMethod method,
+            IDictionary<string, string> headerParams = null
+        )
+        {
+            return await CallApiAsync_Privat(
+                absoluteUrl: absoluteUrl,
+                method: method,
+                headerParams: headerParams,
+                formParams: null,
+                textContentEncoding: null,
+                mediaType: null,
+                stringsBody: null,
+                httpContent: null
+            );
         }
 
         public async Task<HttpResponseMessage> CallApiAsync(
             string absoluteUrl,
             HttpMethod method,
-            MediaTypeHeaderValue contentType = null,
+            string stringsBody,
+            string mediaType = "application/json",
             Encoding textContentEncoding = null,
-            IDictionary<string, string> queryParams = null,
-            string postBody = null,
-            IDictionary<string, string> headerParams = null,
-            IDictionary<string, string> formParams = null,
-            IDictionary<string, string> pathParams = null
-            )
+            IDictionary<string, string> headerParams = null
+        )
+        {
+            return await CallApiAsync_Privat(
+                absoluteUrl: absoluteUrl,
+                method: method,
+                headerParams: headerParams,
+                formParams: null,
+                textContentEncoding: textContentEncoding,
+                mediaType: mediaType,
+                stringsBody: stringsBody,
+                httpContent: null
+            );
+        }
+
+        public async Task<HttpResponseMessage> CallApiAsync(
+            string absoluteUrl,
+            HttpMethod method,
+            IDictionary<string, string> formParams,
+            IDictionary<string, string> headerParams 
+        )
+        {
+            return await CallApiAsync_Privat(
+                absoluteUrl: absoluteUrl,
+                method: method,
+                headerParams: headerParams,
+                formParams: formParams,
+                textContentEncoding: null,
+                mediaType: null,
+                stringsBody: null,
+                httpContent: null
+            );
+        }
+
+        public async Task<HttpResponseMessage> CallApiAsync(
+            string absoluteUrl,
+            HttpMethod method,
+            IDictionary<string, string> headerParams,
+            HttpContent httpContent
+        )
+        {
+            return await CallApiAsync_Privat(
+                absoluteUrl: absoluteUrl,
+                method: method,
+                headerParams: headerParams,
+                formParams: null,
+                textContentEncoding: null,
+                mediaType: null,
+                stringsBody: null,
+                httpContent: httpContent
+            );
+        }
+
+        async Task<HttpResponseMessage> CallApiAsync_Privat(
+            string absoluteUrl,
+            HttpMethod method,
+            IDictionary<string, string> headerParams,
+            IDictionary<string, string> formParams,
+            Encoding textContentEncoding,
+            string mediaType,
+            string stringsBody,
+            HttpContent httpContent
+        )
         {
             var request = PrepareRequest(
-                absoluteUrl,
-                method,
-                contentType,
-                textContentEncoding,
-                queryParams,
-                postBody,
-                headerParams,
-                formParams,
-                pathParams
-                );
+                url: absoluteUrl,
+                method: method,
+                headerParams: headerParams,
+                formParams: formParams,
+                textContentEncoding: textContentEncoding,
+                mediaType: mediaType,
+                stringsBody: stringsBody,
+                httpContent: httpContent
+            );
             InterceptRequest(request);
             TotalRequestsCount++;
             //Logging.
@@ -69,15 +148,14 @@ namespace UndergroundIRO.ApiBase
             {
                 var logStr = $"{nameof(HttpApiClient)} '{Id}' will send request '{TotalRequestsCount}':\n";
                 var requestLogDto = new RequestLogSerializeDto(
-                    absoluteUrl,
-                    method,
-                    contentType,
-                    textContentEncoding,
-                    queryParams,
-                    postBody,
-                    headerParams,
-                    formParams,
-                    pathParams
+                    url: absoluteUrl,
+                    method: method,
+                    headerParams: headerParams,
+                    formParams: formParams,
+                    textContentEncoding: textContentEncoding,
+                    mediaType: mediaType,
+                    stringsBody: stringsBody,
+                    httpContent: httpContent
                     );
                 logStr += requestLogDto.ToString();
                 Log.LogInformation(logStr);
@@ -111,6 +189,7 @@ namespace UndergroundIRO.ApiBase
             InterceptResponse(request, response);
             return response;
         }
+        #endregion
 
         /// <summary>
         /// Will throw exception if can't.
@@ -147,6 +226,13 @@ namespace UndergroundIRO.ApiBase
             {
                 throw new Exception("Can't deserialize api response.", ex);
             }
+        }
+
+        #region Helpers.
+
+        public void AddDefaultHeader(string key, string value)
+        {
+            Configuration.DefaultHeaders.Add(key, value);
         }
 
         public string RelativeUrlToAbsolute(string basePath, string relativeUrl)
@@ -234,10 +320,11 @@ namespace UndergroundIRO.ApiBase
             }
             return json;
         }
+        #endregion
 
         void ThrowIfResponseError(HttpRequestMessage request, HttpResponseMessage response)
         {
-            var ex = _exceptionsFactory.CheckHttpResponse(request, response);
+            var ex = ExceptionsFactory.CheckHttpResponse(request, response);
             if (ex != null)
             {
                 //Logging.
@@ -251,7 +338,7 @@ namespace UndergroundIRO.ApiBase
 
         void ThrowIfResponseError(JToken responseJToken)
         {
-            var ex = _exceptionsFactory.CheckJTokenResponse(responseJToken);
+            var ex = ExceptionsFactory.CheckJTokenResponse(responseJToken);
             if (ex != null)
             {
                 //Logging.
@@ -266,34 +353,12 @@ namespace UndergroundIRO.ApiBase
         #region Timeout queue.
         readonly ITimeoutQueue _timeoutQueue;
 
-        public TimeSpan RequestsTimeout => _timeoutQueue.Timeout;
-
         /// <summary>
-        /// If true - will execute each request in timeout queue.
+        /// If <see cref="HttpConfiguration.UseTimeoutQueue"/> is false - execute without queue.
         /// </summary>
-        public bool UseTimeoutQueue { get; }
-
-        /// <summary>
-        /// For each request in TimeoutQueue with position bigger than this value will be throwed exception.
-        /// </summary>
-        public int QueuePendingRequestLimit => _timeoutQueue.QueuePendingItemLimit;
-
-        public virtual async Task InQueue(Func<Task> func)
+        async Task InQueueIfNeed(Func<Task> func)
         {
-            await _timeoutQueue.Execute(func);
-        }
-
-        public virtual async Task<TResult> InQueue<TResult>(Func<Task<TResult>> func)
-        {
-            return await _timeoutQueue.Execute<TResult>(func);
-        }
-
-        /// <summary>
-        /// If <see cref="UseTimeoutQueue"/> is false - execute without queue.
-        /// </summary>
-        public virtual async Task InQueueIfNeed(Func<Task> func)
-        {
-            if (UseTimeoutQueue)
+            if (Configuration.UseTimeoutQueue)
             {
                 await _timeoutQueue.Execute(func);
             }
@@ -304,11 +369,11 @@ namespace UndergroundIRO.ApiBase
         }
 
         /// <summary>
-        /// If <see cref="UseTimeoutQueue"/> is false - execute without queue.
+        /// If <see cref="HttpConfiguration.UseTimeoutQueue"/> is false - execute without queue.
         /// </summary>
-        public virtual async Task<TResult> InQueueIfNeed<TResult>(Func<Task<TResult>> func)
+        async Task<TResult> InQueueIfNeed<TResult>(Func<Task<TResult>> func)
         {
-            if (UseTimeoutQueue)
+            if (Configuration.UseTimeoutQueue)
             {
                 return await _timeoutQueue.Execute<TResult>(func);
             }
@@ -339,8 +404,7 @@ namespace UndergroundIRO.ApiBase
             var restResponse = await CallApiAsync(
                 absoluteUrl,
                 HttpMethod.Post,
-                contentType: new MediaTypeHeaderValue("application/json"),
-                postBody: body
+                stringsBody:body
             );
             var apiResponse = await ResolveApiResponse<TResult>(restResponse);
             return apiResponse.Data;
@@ -355,8 +419,7 @@ namespace UndergroundIRO.ApiBase
             var restResponse = await CallApiAsync(
                 absoluteUrl,
                 HttpMethod.Put,
-                contentType: new MediaTypeHeaderValue("application/json"),
-                postBody: body
+                stringsBody: body
             );
             var apiResponse = await ResolveApiResponse<TResult>(restResponse);
             return apiResponse.Data;
@@ -371,8 +434,7 @@ namespace UndergroundIRO.ApiBase
             var restResponse = await CallApiAsync(
                 absoluteUrl,
                 HttpMethod.Head,
-                contentType: new MediaTypeHeaderValue("application/json"),
-                postBody: body
+                stringsBody: body
             );
             var apiResponse = await ResolveApiResponse<TResult>(restResponse);
             return apiResponse.Data;
@@ -387,8 +449,7 @@ namespace UndergroundIRO.ApiBase
             var restResponse = await CallApiAsync(
                 absoluteUrl,
                 HttpMethod.Delete,
-                contentType: new MediaTypeHeaderValue("application/json"),
-                postBody: body
+                stringsBody: body
             );
             var apiResponse = await ResolveApiResponse<TResult>(restResponse);
             return apiResponse.Data;
@@ -403,8 +464,7 @@ namespace UndergroundIRO.ApiBase
             var restResponse = await CallApiAsync(
                 absoluteUrl,
                 HttpMethod.Options,
-                contentType: new MediaTypeHeaderValue("application/json"),
-                postBody: body
+                stringsBody: body
             );
             var apiResponse = await ResolveApiResponse<TResult>(restResponse);
             return apiResponse.Data;
